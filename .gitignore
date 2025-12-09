@@ -205,3 +205,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Model files (downloaded from HuggingFace)
+models/
+*.safetensors
+
+# Audio output files
+*.wav
+*.mp3
+
+# OS
+.DS_Store

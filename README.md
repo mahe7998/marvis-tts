@@ -28,6 +28,62 @@ python -m mlx_audio.tts.generate --model Marvis-AI/marvis-tts-250m-v0.1  --strea
  --text "Marvis TTS is a new text-to-speech model that provides fast streaming on edge devices."
 ```
 
+## WebSocket Server
+
+A WebSocket server is included for integrating Marvis TTS into other applications. The server receives text sentences via WebSocket and plays audio on system speakers.
+
+### Installation
+
+```bash
+pip install mlx-audio websockets sounddevice
+```
+
+### Starting the Server
+
+```bash
+python websocket_server.py --port 8765
+```
+
+The server will:
+1. Load the Marvis TTS model (first run downloads ~635MB)
+2. Start listening on `ws://localhost:8765`
+3. Accept JSON messages with text to synthesize
+
+### WebSocket API
+
+**Connect:** `ws://localhost:8765`
+
+**Send messages:**
+```json
+{"text": "Hello, this is a test."}
+{"text": "With custom voice", "voice": "conversational_a"}
+{"text": "Faster speech", "speed": 1.2}
+```
+
+**Receive status updates:**
+```json
+{"status": "connected", "model": "Marvis-AI/marvis-tts-250m-v0.1-MLX-8bit"}
+{"status": "generating", "text": "Hello..."}
+{"status": "playing", "text": "Hello...", "duration": 2.5}
+{"status": "done", "text": "Hello..."}
+```
+
+### Test Clients
+
+**Simple test:**
+```bash
+python test_client.py --text "Hello, this is a test."
+```
+
+**Continuous playback test (minimal gaps between sentences):**
+```bash
+python test_continuous.py
+python test_continuous.py --text "Your long text here. It will be split into sentences."
+python test_continuous.py --file document.txt
+```
+
+The continuous test client sends all sentences immediately to the server's queue, allowing audio generation to happen in parallel with playback for seamless speech.
+
 ## Using transformers
 
 **Without Voice Cloning**
