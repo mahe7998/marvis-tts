@@ -24,28 +24,88 @@ Currently optimized for English with support for expressive speech synthesis wit
 
 ```bash
 pip install -U mlx-audio
-python -m mlx_audio.tts.generate --model Marvis-AI/marvis-tts-250m-v0.1  --stream \
+python -m mlx_audio.tts.generate --model Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit --stream \
  --text "Marvis TTS is a new text-to-speech model that provides fast streaming on edge devices."
+```
+
+## Model Download
+
+The WebSocket server uses the **Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit** model. Download it using wget:
+
+```bash
+# Create model directory
+mkdir -p ~/.cache/huggingface/hub/models--Marvis-AI--marvis-tts-250m-v0.2-MLX-8bit/snapshots/main
+cd ~/.cache/huggingface/hub/models--Marvis-AI--marvis-tts-250m-v0.2-MLX-8bit/snapshots/main
+
+# Download model files
+wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/config.json"
+wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/model.safetensors"
+wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/tokenizer.json"
+wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/tokenizer_config.json"
+wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/vocab.json"
 ```
 
 ## WebSocket Server
 
 A WebSocket server is included for integrating Marvis TTS into other applications. The server receives text sentences via WebSocket and plays audio on system speakers.
 
-### Installation
+### Project Structure
 
-```bash
-pip install mlx-audio websockets sounddevice
 ```
+marvis-tts/
+├── websocket_server_mp.py    # Main WebSocket server (multiprocessing)
+├── test_continuous.py        # Test client for continuous TTS
+├── voices/                   # Custom voice files directory
+│   ├── conversational_a.wav  # Sample only (not used by server)
+│   ├── conversational_b.wav  # Sample only (not used by server)
+│   ├── your_voice.wav        # Your custom voice audio
+│   └── your_voice.txt        # Transcript of your voice audio
+└── README.md
+```
+
+### Installation with Conda (Recommended)
+
+1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) if not already installed
+
+2. Create and activate a new conda environment:
+```bash
+conda create -n marvis python=3.11
+conda activate marvis
+```
+
+3. Install dependencies:
+```bash
+pip install mlx-audio websockets sounddevice numpy
+```
+
+**Tested versions:**
+- Python 3.11.14
+- mlx-audio 0.2.6
+- mlx 0.30.0
+- websockets 15.0.1
+- sounddevice 0.5.3
+- numpy 2.2.6
 
 ### Starting the Server
 
 ```bash
-python websocket_server.py --port 8765
+python websocket_server_mp.py [OPTIONS]
+
+Options:
+  --host HOST           Host to bind to (default: localhost)
+  --port PORT           Port to listen on (default: 8765)
+  --model MODEL         Path to Marvis model (default: ~/.cache/huggingface/hub/models--Marvis-AI--marvis-tts-250m-v0.2-MLX-8bit/snapshots/main)
+  --voices-dir DIR      Directory containing custom voice files (default: ./voices)
+  --prebuffer SECONDS   Pre-buffer time before first playback (default: 2.0)
+```
+
+**Recommended:**
+```bash
+python websocket_server_mp.py --prebuffer 0
 ```
 
 The server will:
-1. Load the Marvis TTS model (first run downloads ~635MB)
+1. Load the Marvis TTS model
 2. Start listening on `ws://localhost:8765`
 3. Accept JSON messages with text to synthesize
 
@@ -56,13 +116,16 @@ The server will:
 **Send messages:**
 ```json
 {"text": "Hello, this is a test."}
-{"text": "With custom voice", "voice": "conversational_a"}
+{"text": "With custom voice", "voice": "your_voice_name"}
+{"text": "With built-in voice", "voice": "conversational_a"}
 {"text": "Faster speech", "speed": 1.2}
+{"action": "list_voices"}
+{"action": "set_prebuffer", "seconds": 2.0}
 ```
 
 **Receive status updates:**
 ```json
-{"status": "connected", "model": "Marvis-AI/marvis-tts-250m-v0.1-MLX-8bit"}
+{"status": "connected", "model": "Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit"}
 {"status": "generating", "text": "Hello..."}
 {"status": "playing", "text": "Hello...", "duration": 2.5}
 {"status": "done", "text": "Hello..."}
@@ -80,9 +143,63 @@ python test_client.py --text "Hello, this is a test."
 python test_continuous.py
 python test_continuous.py --text "Your long text here. It will be split into sentences."
 python test_continuous.py --file document.txt
+python test_continuous.py --voice your_voice_name
+python test_continuous.py --voice conversational_a --speed 1.2
+python test_continuous.py --prebuffer 0
 ```
 
 The continuous test client sends all sentences immediately to the server's queue, allowing audio generation to happen in parallel with playback for seamless speech.
+
+## Creating a Custom Voice
+
+To clone your voice, you need to provide a reference audio file and its exact transcript.
+
+### Recording Your Voice
+
+1. Download and install [Audacity](https://www.audacityteam.org/download/)
+
+2. **Configure audio settings BEFORE recording** (this is critical):
+   - Set **Project Rate** to **24000 Hz** (bottom left corner of Audacity window)
+   - Go to **Audio Setup > Recording Channels** and select **1 (Mono)**
+
+3. Record approximately **10 seconds** of clear speech:
+   - Speak naturally in a quiet environment
+   - Avoid background noise
+   - Use consistent volume and tone
+   - Read a prepared text so you have an exact transcript
+
+4. Export the audio:
+   - File > Export > Export as WAV
+   - Choose **"Signed 16-bit PCM"** encoding (this is critical)
+   - Save as `your_name.wav`
+
+5. Create a text file with the **exact transcript** of what you said:
+   - Save as `your_name.txt` (same name as the WAV file)
+   - The transcript must match the audio exactly word-for-word
+
+6. Copy both files to the `voices/` directory:
+   ```
+   voices/
+   ├── your_name.wav    # 10s, 24KHz, mono, 16-bit signed
+   └── your_name.txt    # Exact transcript of the audio
+   ```
+
+**Note**: The `conversational_a.wav` and `conversational_b.wav` files in the voices directory are samples only and are NOT used by the server. These built-in voices use internal model weights.
+
+## Reducing Hallucinations
+
+The server uses optimized generation parameters to minimize hallucinations (random words or repeated phrases):
+
+- **temperature**: 0.5 (default is 0.7) - Lower values produce more deterministic output
+- **repetition_penalty**: 1.5 (default is 1.3) - Higher values reduce repetition
+
+These parameters are configured in `websocket_server_mp.py` at lines 143-144.
+
+**Important**: When using custom voices, you may need to adjust these parameters if you experience hallucinations. Try:
+- Lowering temperature further (0.3-0.5)
+- Increasing repetition_penalty (1.5-2.0)
+- Ensuring your reference audio is exactly 10 seconds
+- Making sure the transcript in your `.txt` file exactly matches the audio
 
 ## Using transformers
 
@@ -124,15 +241,15 @@ Unlike models that require text chunking based on regex patterns, Marvis process
 
 # Training Details
 
-**Pretraining**: 
-- Dataset: Emilia-YODAS 
+**Pretraining**:
+- Dataset: Emilia-YODAS
 - Training Steps: 2M steps
 - Hardware: 1x NVIDIA GH200 96GB
 - Precision: bfloat16
 - Learning Rate: 3e-4
 - Batch Size: 64
 
-**Post-training**: 
+**Post-training**:
 - Dataset: Expressive Speech
 - Training Steps: 200K steps
 - Expressiveness Setting: 0.5
@@ -141,7 +258,7 @@ Unlike models that require text chunking based on regex patterns, Marvis process
 - Learning Rate: 1e-4
 - Batch Size: 64
 
-**Total Training Cost**: ~$2,000 
+**Total Training Cost**: ~$2,000
 - Pretraining and fine-tuning: $246.69 (1x GH200)
 - Post-training data generation: $167.94 (RTX6000 Ada)
 - Additional experimentation: ~$1,500 across various GPU configurations
@@ -203,8 +320,8 @@ Special thanks to Sesame and Kyutai for their groundbreaking open-source contrib
 
 ---
 
-**Version**: 0.1 
+**Version**: 0.2
 
-**Release Date**: 26/08/2025  
+**Release Date**: 26/08/2025
 
 **Creators**: Prince Canuma & Lucas Newman
