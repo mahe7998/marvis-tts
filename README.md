@@ -37,7 +37,7 @@ The WebSocket server uses the **Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit** model.
 mkdir -p ~/.cache/huggingface/hub/models--Marvis-AI--marvis-tts-250m-v0.2-MLX-8bit/snapshots/main
 cd ~/.cache/huggingface/hub/models--Marvis-AI--marvis-tts-250m-v0.2-MLX-8bit/snapshots/main
 
-# Download model files
+# Download model files manually if having issue downloading it through huggingface (for me, hangs after a while - timeout):
 wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/config.json"
 wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/model.safetensors"
 wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/main/tokenizer.json"
@@ -49,7 +49,7 @@ wget "https://huggingface.co/Marvis-AI/marvis-tts-250m-v0.2-MLX-8bit/resolve/mai
 
 A WebSocket server is included for integrating Marvis TTS into other applications. The server receives text sentences via WebSocket and plays audio on system speakers.
 
-### Project Structure
+### Web server project Structure
 
 ```
 marvis-tts/
@@ -63,7 +63,7 @@ marvis-tts/
 └── README.md
 ```
 
-### Installation with Conda (Recommended)
+### Installation with Conda (Recommended to select proper Python version 3.11 and libraries)
 
 1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html) if not already installed
 
